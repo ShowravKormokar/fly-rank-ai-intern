@@ -1,0 +1,159 @@
+AI REFACTOR PROPOSAL
+====================
+
+Generated: 2026-09-18
+Scope: Task API (Express + in-memory tasks + Swagger UI)
+Constraint: No database. Preserve all API behavior and status codes.
+
+--------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------
+
+The current implementation is a single 107-line server.js with all routes,
+data, and Swagger wiring in one file. It works correctly and is easy to read.
+The proposals below focus on removing duplication, clarifying validation, and
+making the code slightly easier to maintain without changing API behavior.
+
+--------------------------------------------------------------------
+PROPOSAL 1: Extract a helper for the 404 "task not found" response
+--------------------------------------------------------------------
+
+Current pattern (repeated 3 times):
+
+    if (!task) {
+      return res.status(404).json({ error: `Task ${req.params.id} not found` });
+    }
+
+Suggested helper:
+
+    function taskNotFoundError(res, id) {
+      return res.status(404).json({ error: `Task ${id} not found` });
+    }
+
+Then use it in GET /tasks/:id, PUT /tasks/:id, and DELETE /tasks/:id.
+
+Benefit:   Removes 3 copies of the same error message. If the message format
+           ever changes, only one place needs editing.
+Drawback:  Adds a small helper function. For a 107-line file this is a very
+           minor change and does not add meaningful complexity.
+
+--------------------------------------------------------------------
+PROPOSAL 2: Extract title validation into a helper
+--------------------------------------------------------------------
+
+Current pattern (POST and PUT):
+
+    if (!title || title.trim() === '') { ... }
+    if (typeof title !== 'string' || title.trim() === '') { ... }
+
+Suggested helper:
+
+    function isValidTitle(title) {
+      return typeof title === 'string' && title.trim() !== '';
+    }
+
+Then use it in POST and PUT.
+
+Benefit:   Removes duplicated trimming/empty-check logic. Makes the intent
+           clearer ("is this a valid title?").
+Drawback:  None for this project size. The helper is small and obvious.
+
+--------------------------------------------------------------------
+PROPOSAL 3: Simplify ID generation
+--------------------------------------------------------------------
+
+Current:
+
+    const newId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
+
+Suggested:
+
+    const newId = tasks.reduce((max, t) => Math.max(max, t.id), 0) + 1;
+
+Benefit:   One expression, no special-case for empty array. Works even if the
+           array is empty (returns 0 + 1 = 1).
+Drawback:  Slightly less obvious to a complete beginner. The current version
+           is already clear enough. This is a very minor stylistic change.
+
+--------------------------------------------------------------------
+PROPOSAL 4: Extract query-parameter filtering for GET /tasks
+--------------------------------------------------------------------
+
+Current: filtering logic is inline in the GET /tasks route (lines 31-49).
+
+Suggested: extract into a helper function:
+
+    function filterTasks(tasks, query) {
+      let result = tasks;
+      if (query.done !== undefined) {
+        if (query.done !== 'true' && query.done !== 'false') {
+          return { error: 'done must be true or false' };
+        }
+        const doneFilter = query.done === 'true';
+        result = result.filter(t => t.done === doneFilter);
+      }
+      if (query.search !== undefined && query.search !== '') {
+        const q = query.search.toLowerCase();
+        result = result.filter(t => t.title.toLowerCase().includes(q));
+      }
+      return result;
+    }
+
+Then the route becomes:
+
+    app.get('/tasks', (req, res) => {
+      const result = filterTasks(tasks, req.query);
+      if (result.error) {
+        return res.status(400).json({ error: result.error });
+      }
+      res.json(result);
+    });
+
+Benefit:   Separates filtering logic from HTTP handling. Easier to test the
+           filtering in isolation.
+Drawback:  Adds a function and a return-value pattern. For one route the
+           inline version is already readable. This is the most debatable
+           proposal because it introduces a small amount of structure for a
+           feature that only exists in one place.
+
+--------------------------------------------------------------------
+PROPOSAL 5: Use a constant for the "done must be true or false" error
+--------------------------------------------------------------------
+
+Current: the error string 'done must be true or false' appears once.
+
+Suggested: not strictly necessary, but a named constant (e.g. at the top of
+the file) would make the intent clearer if more validation messages are added
+later.
+
+Benefit:   Consistency if more validation messages are added.
+Drawback:  Overkill for one message in a small file. Not recommended.
+
+--------------------------------------------------------------------
+WHAT THE PROPOSAL DOES NOT CHANGE
+--------------------------------------------------------------------
+
+* All endpoints remain the same: /, /health, /tasks, /tasks/:id, POST /tasks,
+  PUT /tasks/:id, DELETE /tasks/:id.
+* All status codes remain the same: 200, 201, 204, 400, 404.
+* All validation rules remain the same (missing/empty title, empty PUT body,
+  invalid done query value).
+* Data remains in-memory only. No database.
+* openapi.json and Swagger UI are unchanged.
+* No controllers, services, repositories, or new directories are introduced.
+
+--------------------------------------------------------------------
+RECOMMENDATION
+--------------------------------------------------------------------
+
+The most valuable proposals are #1 and #2 (extracting the repeated 404 helper
+and the title-validation helper). They remove the most duplication with the
+least risk.
+
+Proposal #3 is optional and purely stylistic.
+
+Proposal #4 is the most debatable: it improves testability but adds structure
+to a feature that only exists in one route. For a beginner assignment, the
+inline version is arguably clearer.
+
+Proposal #5 is not recommended for this project size.

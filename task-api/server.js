@@ -10,6 +10,14 @@ const tasks = [
   { id: 3, title: 'Read a book', done: false }
 ];
 
+function taskNotFoundError(res, id) {
+  return res.status(404).json({ error: `Task ${id} not found` });
+}
+
+function isValidTitle(title) {
+  return typeof title === 'string' && title.trim() !== '';
+}
+
 app.use(express.json());
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
@@ -52,14 +60,14 @@ app.get('/tasks/:id', (req, res) => {
   const taskId = Number(req.params.id);
   const task = tasks.find(t => t.id === taskId);
   if (!task) {
-    return res.status(404).json({ error: `Task ${req.params.id} not found` });
+    return taskNotFoundError(res, req.params.id);
   }
   res.json(task);
 });
 
 app.post('/tasks', (req, res) => {
   const title = req.body.title;
-  if (!title || title.trim() === '') {
+  if (!isValidTitle(title)) {
     return res.status(400).json({ error: 'title is required and cannot be empty' });
   }
   const newId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
@@ -72,7 +80,7 @@ app.put('/tasks/:id', (req, res) => {
   const taskId = Number(req.params.id);
   const task = tasks.find(t => t.id === taskId);
   if (!task) {
-    return res.status(404).json({ error: `Task ${req.params.id} not found` });
+    return taskNotFoundError(res, req.params.id);
   }
   const { title, done } = req.body;
   const hasTitle = title !== undefined;
@@ -81,7 +89,7 @@ app.put('/tasks/:id', (req, res) => {
     return res.status(400).json({ error: 'request body must include title and/or done' });
   }
   if (hasTitle) {
-    if (typeof title !== 'string' || title.trim() === '') {
+    if (!isValidTitle(title)) {
       return res.status(400).json({ error: 'request body must include title and/or done' });
     }
     task.title = title.trim();
@@ -96,7 +104,7 @@ app.delete('/tasks/:id', (req, res) => {
   const taskId = Number(req.params.id);
   const index = tasks.findIndex(t => t.id === taskId);
   if (index === -1) {
-    return res.status(404).json({ error: `Task ${req.params.id} not found` });
+    return taskNotFoundError(res, req.params.id);
   }
   tasks.splice(index, 1);
   res.status(204).send();
