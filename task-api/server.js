@@ -8,6 +8,8 @@ const tasks = [
   { id: 3, title: 'Read a book', done: false }
 ];
 
+app.use(express.json());
+
 app.get('/', (req, res) => {
   res.json({
     name: 'Task API',
@@ -33,6 +35,17 @@ app.get('/tasks/:id', (req, res) => {
     return res.status(404).json({ error: `Task ${req.params.id} not found` });
   }
   res.json(task);
+});
+
+app.post('/tasks', (req, res) => {
+  const title = req.body.title;
+  if (!title || title.trim() === '') {
+    return res.status(400).json({ error: 'title is required and cannot be empty' });
+  }
+  const newId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
+  const newTask = { id: newId, title: title.trim(), done: false };
+  tasks.push(newTask);
+  res.status(201).json(newTask);
 });
 
 app.listen(PORT, () => {
