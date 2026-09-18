@@ -170,6 +170,7 @@ task-api/
 ├── screenshots/
 │   └── swagger-ui.png
 ├── .gitignore
+├── ai-suggestion.txt
 ├── openapi.json
 ├── package.json
 ├── package-lock.json
@@ -180,6 +181,7 @@ task-api/
 ## Git History
 
 ```text
+2e3c2cb Stage 7: AI vs me
 baaef22 Stage 6: publish and docs
 a171180 Stage 7: add task filtering and search
 228edef Stage 5: Swagger UI
