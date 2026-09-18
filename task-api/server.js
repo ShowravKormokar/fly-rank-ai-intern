@@ -29,7 +29,23 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/tasks', (req, res) => {
-  res.json(tasks);
+  let result = tasks;
+  const { done, search } = req.query;
+
+  if (done !== undefined) {
+    if (done !== 'true' && done !== 'false') {
+      return res.status(400).json({ error: 'done must be true or false' });
+    }
+    const doneFilter = done === 'true';
+    result = result.filter(t => t.done === doneFilter);
+  }
+
+  if (search !== undefined && search !== '') {
+    const query = search.toLowerCase();
+    result = result.filter(t => t.title.toLowerCase().includes(query));
+  }
+
+  res.json(result);
 });
 
 app.get('/tasks/:id', (req, res) => {

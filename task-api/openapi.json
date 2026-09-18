@@ -74,7 +74,27 @@
     "/tasks": {
       "get": {
         "summary": "Get all tasks",
-        "description": "Returns the complete list of tasks stored in memory.",
+        "description": "Returns the complete list of tasks stored in memory. Supports optional filtering and search.",
+        "parameters": [
+          {
+            "name": "done",
+            "in": "query",
+            "required": false,
+            "description": "Filter tasks by completion status",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Search task titles (case-insensitive, partial match)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "List of tasks",
@@ -85,6 +105,16 @@
                   "items": {
                     "$ref": "#/components/schemas/Task"
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
