@@ -48,6 +48,40 @@ app.post('/tasks', (req, res) => {
   res.status(201).json(newTask);
 });
 
+app.put('/tasks/:id', (req, res) => {
+  const taskId = Number(req.params.id);
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) {
+    return res.status(404).json({ error: `Task ${req.params.id} not found` });
+  }
+  const { title, done } = req.body;
+  const hasTitle = title !== undefined;
+  const hasDone = done !== undefined;
+  if (!hasTitle && !hasDone) {
+    return res.status(400).json({ error: 'request body must include title and/or done' });
+  }
+  if (hasTitle) {
+    if (typeof title !== 'string' || title.trim() === '') {
+      return res.status(400).json({ error: 'request body must include title and/or done' });
+    }
+    task.title = title.trim();
+  }
+  if (hasDone) {
+    task.done = Boolean(done);
+  }
+  res.json(task);
+});
+
+app.delete('/tasks/:id', (req, res) => {
+  const taskId = Number(req.params.id);
+  const index = tasks.findIndex(t => t.id === taskId);
+  if (index === -1) {
+    return res.status(404).json({ error: `Task ${req.params.id} not found` });
+  }
+  tasks.splice(index, 1);
+  res.status(204).send();
+});
+
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
